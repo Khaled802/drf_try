@@ -7,8 +7,8 @@ from rest_framework import generics
 from rest_framework.views import APIView
 
 from app.permissions import CreatorOrReadOnlyPermission, PostIfCreatorPermission
-from .models import ABCVoting, Downvote, Post, Comment, Tag, Upvote
-from .serializer import BasePostSerializer, DownVoteSerializer, PostSerializer, CommentSerializer, CommentCreateSerializer, TagPostsSerializer, \
+from .models import ABCVoting, Downvote, Love, Post, Comment, Tag, Upvote
+from .serializer import BasePostSerializer, CommentFullDataSerializer, DownVoteSerializer, LoveSerializer, PostSerializer, CommentSerializer, CommentCreateSerializer, ReplyCreateSerializer, ReplySerializer, TagPostsSerializer, \
   TaggingPostCreationSerializer, UpVoteSerializer
 from rest_framework.response import Response
 from rest_framework import status
@@ -35,8 +35,46 @@ class CommentList(generics.CreateAPIView):
 
 class CommentObject(generics.RetrieveUpdateDestroyAPIView):
     queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
+    serializer_class = CommentFullDataSerializer
     permission_classes = (CreatorOrReadOnlyPermission,)
+
+
+class ReplyList(generics.CreateAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = ReplyCreateSerializer
+    
+
+
+class ReplyObject(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = ReplySerializer
+    permission_classes = (CreatorOrReadOnlyPermission,)
+
+class LoveView(generics.CreateAPIView):
+    queryset = Love.objects.all()
+    serializer_class = LoveSerializer
+
+    @classmethod
+    def check_valition_data(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+    @classmethod
+    def get_comment(self, request):
+        return get_object_or_404(Comment, id=request.data['comment_id'])
+
+    def post(self, request):
+        self.check_valition_data(request)
+        comment = self.get_comment(request)
+        creator = request.user
+        
+        love = Love.objects.filter(comment=comment, creator=creator)
+        
+        if love:
+            love.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        Love.objects.create(comment_id=comment.id, creator_id=creator.id)
+        return Response(status=status.HTTP_200_OK)
 
 
 class Tagging(generics.CreateAPIView):
@@ -125,6 +163,7 @@ class UpAndUnVote(VotingManager):
         return self.perform_post_voting(upvote, post, voter, successed_created='upvoted',
                         successed_removed='un upvoted', rev=downvote)
 
+
 class DownAndUnVote(VotingManager):
     serializer_class = DownVoteSerializer
     model = Downvote
@@ -136,3 +175,15 @@ class DownAndUnVote(VotingManager):
         upvote, downvote = self.get_up_down_vote(post, voter)
         return self.perform_post_voting(downvote, post, voter, successed_created='downvoted',
                         successed_removed='un downvoted', rev=upvote)
+    
+
+class VotingState(APIView):
+    def get(self, request):
+        user = request.user
+        if Post.objects.exists(id=request.data['post_id']):
+            post = Post.objects.get()
+            if Upvote.objects.exists(voter=user, post=post):
+                return Response({'state': 'upvote'})
+            if Downvote.objects.exists(voter=user, post=post):
+                return Response({'state': 'downvote'})
+        return Response({'state': ''})
