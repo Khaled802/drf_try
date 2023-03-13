@@ -1,14 +1,15 @@
 import datetime
 from django.db import models
 
-from app.models import Tag
+# from app.models import Tag
 from django.contrib.auth.models import User
+from taggit.managers import TaggableManager
 # Create your models here.
 
 class Event(models.Model):
     title = models.CharField(max_length=120)
     description = models.TextField()
-    tags = models.ManyToManyField(Tag, related_name='events_tags')
+    tags = TaggableManager()
     start_at = models.DateTimeField()
     end_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)

@@ -27,6 +27,7 @@ urlpatterns = [
     path('posts/', include('app.urls')),
     path('api-token-auth/', views.obtain_auth_token),
     path('events/', include('events.urls')),
+    path('tags/', include('tags.urls')),
 ]
 
 from django.conf import settings

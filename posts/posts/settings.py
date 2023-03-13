@@ -41,9 +41,11 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework.authtoken',
-
+    'taggit',
+    
      "app",
      "events",
+     "tags",
 
 ]
 REST_FRAMEWORK = {
